@@ -74,11 +74,16 @@ REMB1           equ     0x3A
 REMB0           equ     0x3B    ; most significant byte of remainder
 LOOPCOUNT       equ     0x3C    ; loop counter
 
+CALI0		equ	0x80
+CALI30		equ	CALI0+D'40'
+
 ; preprogram EEPROM DATA (00-3F from 2100-213F)
 	
 	ORG     2100		; start at 00
-	
-	DE	D'127', D'30', D'165', D'38' 
+	DE	CALI0 
+	DE	D'30' 
+	DE	CALI30 
+	DE	CALI30-CALI0 
 
 ; define reset and interrupt vector start addresses
 
@@ -95,7 +100,7 @@ LOOPCOUNT       equ     0x3C    ; loop counter
 LEDOTP  movwf	TEMP_1	; temporary store
 	movlw	D'30'	; 
 	subwf	TEMP_1,w
-	btfsc	STATUS,c; if c is zero then negative
+	btfsc	STATUS,C; if c is zero then negative
 	retlw	B'10111110'	; 30 bit 6 LED1 on, return as greater than table
 	movf	TEMP_1,w
 	addwf	PCL,f		; add value to program counter
@@ -142,7 +147,7 @@ LEDOTP  movwf	TEMP_1	; temporary store
 LEDOTM	movwf	TEMP_1	; temporary store
 	movlw	D'30'	; 
 	subwf	TEMP_1,w
-	btfsc	STATUS,c; if c is zero then negative
+	btfsc	STATUS,C; if c is zero then negative
 
 	retlw	B'11111100'	; 30 bit 1 LED7 on, return as greater than table
 	movf	TEMP_1,w
@@ -229,7 +234,7 @@ CNT_NOW	btfss	FLAG_1,1	; look at flag
 ; Result in BCD is in BCD1 & BCD2.  
 ; BCD1 is MSB, BCD2 is LSB
 
-BCD	bcf	STATUS,c	; clear carry bit
+BCD	bcf	STATUS,C	; clear carry bit
 	movlw	D'8'
 	movwf	CNT_8		; 8 in count
 	clrf	BCD_1
@@ -521,7 +526,7 @@ MOR_DEL	call	DELMOR		; delay
 
 	movf	TEMP_3,w
 	sublw	D'230'		; check if more than 230
-	btfsc	STATUS,c	; more than so load OL into disp	
+	btfsc	STATUS,C	; more than so load OL into disp	
 	goto	AMP		; value is within range	
 	movlw	B'10000000'	; "O" as in Overload
 	movwf	DISP2	
@@ -543,7 +548,7 @@ MIN_AMP	movlw	B'10000000'	; "O" as in Overload
 	goto	NEWVAL
 AMP	movlw	D'19'		; minimum value of 19 to w register 
 	subwf	TEMP_3,w	; reduce by 19	
-	btfss	STATUS,c	; if 0 or positive continue
+	btfss	STATUS,C	; if 0 or positive continue
 	goto 	MIN_AMP		; if negative clear value add - sign
 	
 	movf	TEMP_3,w	; temp storage
@@ -595,7 +600,7 @@ CONVM	clrf	BARGB0
 	movwf	DISP3		; transfer to DISPlay 3
 	
 	movf	BCD_1,w		; contains packed BCD value
-	btfss	STATUS,z	; if zero continue (if clear then 100 or more) then load "OL"
+	btfss	STATUS,Z	; if zero continue (if clear then 100 or more) then load "OL"
 	goto 	OVER
 	movf	BCD_2,w		; BCD value
 	andlw	0x0F		; extract LS bits
@@ -603,7 +608,7 @@ CONVM	clrf	BARGB0
 	movwf	DISP1		; place in display 1
 	swapf	BCD_2,w		; swap upper and lower 4-bits
 	andlw	0x0F		; extract bits
-	btfsc	STATUS,z	; if zero then blank
+	btfsc	STATUS,Z	; if zero then blank
 	goto	BLANK		; blank zero on display
 	call	SVNSEG
 	movwf	DISP2		; place in middle digit register
@@ -647,6 +652,10 @@ CAL0	movlw	EEPROM1		; storage of V_OUT0 (value at 0A)
 	movwf	DISP1	
 	movlw	B'01111110'	; 0 bit 7 LED4 on
 	movwf	DISP4
+
+	movlw	CALI30-CALI0 
+	addwf	TEMP_3,f
+	goto	CAL30
 
 WAIT1	movlw	0xFF		; delay extension
 	movwf	EXTN
@@ -903,7 +912,7 @@ UOK46LC 	RLF             AARGB2, F
                 MOVF            BARGB1,W
 	        ADDWF           REMB1, F
                 MOVF            BARGB0,W
-                BTFSC           STATUS,c
+                BTFSC           STATUS,C
                 INCFSZ          BARGB0,W
                 ADDWF           REMB0, F
 UOK46L		RETURN
@@ -936,30 +945,30 @@ FXM1616U
                 MOVLW   0x08
                 MOVWF   LOOPCOUNT
 LOOPUM1616A     RRF     BARGB1, F
-                BTFSC   STATUS,c
+                BTFSC   STATUS,C
                 GOTO    ALUM1616NAP
                 DECFSZ  LOOPCOUNT, F
                 GOTO    LOOPUM1616A
                 MOVWF   LOOPCOUNT
 LOOPUM1616B     RRF     BARGB0, F
-                BTFSC   STATUS,c
+                BTFSC   STATUS,C
                 GOTO    BLUM1616NAP
                 DECFSZ  LOOPCOUNT, F
                 GOTO    LOOPUM1616B
                 CLRF    AARGB0
                 CLRF    AARGB1
                 RETLW   0x00
-BLUM1616NAP     BCF     STATUS,c
+BLUM1616NAP     BCF     STATUS,C
                 GOTO    BLUM1616NA
-ALUM1616NAP     BCF     STATUS,c
+ALUM1616NAP     BCF     STATUS,C
                 GOTO    ALUM1616NA
 ALOOPUM1616     RRF     BARGB1, F
-                BTFSS   STATUS,c
+                BTFSS   STATUS,C
                 GOTO    ALUM1616NA
                 MOVF    TEMPB1,W
                 ADDWF   AARGB1, F
                 MOVF    TEMPB0,W
-                BTFSC   STATUS,c
+                BTFSC   STATUS,C
                 INCFSZ  TEMPB0,W
                 ADDWF   AARGB0, F
 ALUM1616NA      RRF    AARGB0, F
@@ -970,12 +979,12 @@ ALUM1616NA      RRF    AARGB0, F
                 MOVLW  0x08
                 MOVWF  LOOPCOUNT
 BLOOPUM1616     RRF    BARGB0, F
-                BTFSS  STATUS,c
+                BTFSS  STATUS,C
                 GOTO   BLUM1616NA
                 MOVF   TEMPB1,W
                 ADDWF  AARGB1, F
                 MOVF   TEMPB0,W
-                BTFSC  STATUS,c
+                BTFSC  STATUS,C
                 INCFSZ TEMPB0,W
                 ADDWF  AARGB0, F
 BLUM1616NA      RRF    AARGB0, F
@@ -992,7 +1001,7 @@ D_SUB	call	NEG_A		; complement of A
 
 	movf	BARGB1,w 
 	addwf	AARGB2,f 	; add lsb
-	btfsc	STATUS,c	; add carry
+	btfsc	STATUS,C	; add carry
 	incf	AARGB1,f 
 	movf	BARGB0,w 
 	addwf	AARGB1,f 
@@ -1000,7 +1009,7 @@ D_SUB	call	NEG_A		; complement of A
 
 NEG_A	comf	BARGB1,f 
 	incf	BARGB1,f 
-	btfsc	STATUS,z
+	btfsc	STATUS,Z
 	decf	BARGB0,f 
 	comf	BARGB0,f 
 	return	
